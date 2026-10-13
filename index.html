@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FuFu</title>
+<style>
+  /* ---- design plan ----
+     color: flat moodboard stickers on cream paper — fuchsia / tulip / gold / rose, solid ink
+            outlines, hard offset shadows. no gradients, no blur glow, no glassmorphism.
+     type: Silkscreen (pixel/blocky title) + Baloo 2 (chunky rounded UI) + Caveat (handwritten
+            caption) + Quicksand (body)
+     layout: landing (paper card, polaroid-framed blocky avatar, sticker tags) -> permission
+             card, same paper system -> single fog canvas (actual night glass, stays dark)
+  */
+  :root{
+    --paper:#f3ecd9;
+    --paper-line:rgba(23,17,11,0.07);
+    --ink:#17110b;
+    --fuchsia:#e23b76;
+    --tulip:#ff93a8;
+    --gold:#e8b94a;
+    --rose:#8b263e;
+    --white:#fffaf0;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--ink);overflow:hidden;}
+  body{font-family:'Quicksand',system-ui,sans-serif;color:var(--ink);}
+  ::selection{background:var(--tulip);color:var(--ink);}
+
+  #stage{position:relative;width:100%;height:100%;overflow:hidden;background:var(--ink);touch-action:none;}
+
+  /* ---------------- landing ---------------- */
+  #landing{
+    position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+    padding:32px 24px;text-align:center;
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+    background-size:26px 26px;
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  #landing.hidden{opacity:0;transform:scale(0.98);pointer-events:none;}
+
+  .landing-inner{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;max-width:480px;}
+
+  .title-box{
+    position:relative;display:inline-block;padding:12px 22px;border:3px solid var(--ink);border-radius:6px;
+    transform:rotate(-1.4deg);background:var(--white);box-shadow:5px 5px 0 var(--ink);margin:36px 0 26px;
+  }
+  .title-box h1{font-family:'Silkscreen',monospace;font-weight:700;font-size:clamp(20px,4.6vw,30px);letter-spacing:0.02em;color:var(--ink);margin:0;}
+
+  .tag-chip{
+    position:absolute;font-family:'Quicksand',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:0.04em;
+    text-transform:uppercase;padding:6px 12px;border:2.5px solid var(--ink);border-radius:999px;
+    box-shadow:3px 3px 0 var(--ink);white-space:nowrap;
+  }
+  .tag-chip.a{top:-20px;left:-10px;transform:rotate(-9deg);background:var(--tulip);}
+  .tag-chip.b{top:-16px;right:-6px;transform:rotate(7deg);background:var(--gold);}
+  @media (max-width:460px){ .tag-chip{display:none;} }
+
+  .polaroid{
+    position:relative;background:var(--white);border:3px solid var(--ink);border-radius:8px;
+    padding:14px 14px 30px;box-shadow:6px 6px 0 var(--ink);transform:rotate(-2.4deg);margin-bottom:22px;
+  }
+  .polaroid .tape{
+    position:absolute;top:-13px;left:50%;transform:translateX(-50%) rotate(-3deg);width:72px;height:22px;
+    background:rgba(232,185,74,0.8);border:1px solid rgba(23,17,11,0.3);
+  }
+  .polaroid .caption{
+    position:absolute;bottom:7px;left:0;right:0;text-align:center;font-family:'Caveat',cursive;
+    font-weight:600;font-size:18px;color:var(--ink);
+  }
+
+  .avatar-wrap{position:relative;width:170px;height:198px;flex:none;animation:bob 3.6s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+  .avatar-wrap.excited .arm.r{animation-duration:.5s;}
+
+  /* Short textured boy hair back */
+  .hair-back{position:absolute;top:16px;left:50%;transform:translateX(-50%);width:118px;height:78px;background:#26160d;border-radius:48% 48% 22% 22% / 55% 55% 25% 25%;}
+  .hair-top-spike{position:absolute;top:9px;left:50px;width:22px;height:22px;background:#26160d;border-radius:70% 30% 0 0 / 90% 40% 0 0;transform:rotate(-18deg);}
+  .hair-top-spike-2{position:absolute;top:11px;left:74px;width:20px;height:20px;background:#26160d;border-radius:30% 70% 0 0 / 40% 90% 0 0;transform:rotate(14deg);}
+
+  .ear{position:absolute;top:76px;width:15px;height:19px;background:#f0b67e;border-radius:50% 50% 45% 45%;}
+  .ear.l{left:22px;}
+  .ear.r{right:22px;}
+
+  .sideburn{position:absolute;top:66px;width:8px;height:22px;background:#26160d;border-radius:0 0 3px 3px;z-index:2;}
+  .sideburn.l{left:33px;}
+  .sideburn.r{right:33px;}
+
+  .neck{position:absolute;top:116px;left:50%;transform:translateX(-50%);width:32px;height:24px;background:#e5ae76;border-radius:0 0 10px 10px;}
+
+  .head{position:absolute;top:30px;left:50%;transform:translateX(-50%);width:106px;height:94px;background:#f3c28c;border-radius:38% 38% 44% 44% / 44% 44% 42% 42%;}
+
+  /* Boy fringe/bangs front */
+  .hair-front{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:114px;height:38px;background:#26160d;border-radius:50% 50% 30% 30% / 65% 65% 25% 25%;z-index:3;}
+  .hair-fringe{position:absolute;top:36px;left:42px;width:38px;height:22px;background:#26160d;border-radius:0 0 50% 20% / 0 0 70% 30%;transform:rotate(-6deg);z-index:3;}
+  .hair-fringe.r{left:76px;width:32px;height:18px;border-radius:0 0 20% 60% / 0 0 30% 80%;transform:rotate(8deg);}
+
+  .eyebrow{position:absolute;top:65px;width:16px;height:4.5px;background:#26160d;border-radius:3px;z-index:4;}
+  .eyebrow.l{left:46px;transform:rotate(6deg);}
+  .eyebrow.r{right:46px;transform:rotate(-6deg);}
+
+  .glasses{position:absolute;top:72px;left:50%;transform:translateX(-50%);width:86px;height:25px;z-index:4;}
+  .lens{position:absolute;top:0;width:32px;height:23px;border:3px solid var(--ink);border-radius:7px;background:rgba(255,250,240,0.4);}
+  .lens.l{left:0;}
+  .lens.r{right:0;}
+  .bridge{position:absolute;top:8px;left:33px;width:20px;height:3px;background:var(--ink);border-radius:2px;}
+  .glint{position:absolute;top:4px;width:6px;height:4px;background:#fff;border-radius:50%;}
+  .glint.l{left:5px;}
+  .glint.r{right:5px;}
+
+  .eye{position:absolute;top:82px;width:13px;height:7px;border-bottom:3px solid #2a1710;border-radius:0 0 60% 60%;z-index:4;}
+  .eye.l{left:calc(50% - 23px);}
+  .eye.r{left:calc(50% + 10px);}
+
+  .mouth{position:absolute;top:105px;left:50%;transform:translateX(-50%);width:15px;height:7px;border-bottom:3px solid #2a1710;border-radius:0 0 60% 60%;z-index:4;}
+
+  .torso{position:absolute;top:134px;left:50%;transform:translateX(-50%);width:114px;height:62px;background:#223c60;border-radius:30% 30% 18% 18% / 46% 46% 14% 14%;}
+  .collar{position:absolute;top:130px;left:50%;transform:translateX(-50%);width:36px;height:12px;background:#f3c28c;border-bottom:2.5px solid #223c60;border-radius:0 0 50% 50%;z-index:2;}
+  .torso-star{position:absolute;top:151px;left:50%;transform:translateX(-50%);width:15px;height:15px;background:var(--gold);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);z-index:2;}
+  .arm{position:absolute;top:140px;width:24px;height:44px;background:#2f5282;border-radius:14px;}
+  .arm.l{left:20px;transform-origin:top center;transform:rotate(-10deg);}
+  .arm.r{right:20px;transform-origin:top center;animation:wave 1.5s ease-in-out infinite;}
+  @keyframes wave{0%,100%{transform:rotate(14deg);}50%{transform:rotate(48deg);}}
+
+  .sparkle{position:absolute;clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);}
+
+  .bubble{
+    position:relative;background:var(--white);color:var(--ink);border:3px solid var(--ink);border-radius:16px;
+    padding:14px 20px;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16px;line-height:1.35;
+    max-width:370px;box-shadow:5px 5px 0 var(--ink);min-height:1.4em;
+  }
+  .bubble::after{
+    content:'';position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);
+    width:18px;height:18px;background:var(--white);border-right:3px solid var(--ink);border-bottom:3px solid var(--ink);
+    clip-path:polygon(0 0, 100% 0, 0 100%);
+  }
+  .bubble .cursor{display:inline-block;width:2px;background:var(--fuchsia);margin-left:2px;animation:blink .8s step-end infinite;}
+  @keyframes blink{50%{opacity:0;}}
+
+  .name-row{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;justify-content:center;}
+  .name-input{
+    font-family:'Quicksand',sans-serif;font-weight:700;font-size:15px;padding:13px 18px;border-radius:10px;
+    border:3px solid var(--ink);background:var(--white);color:var(--ink);outline:none;min-width:200px;
+    box-shadow:3px 3px 0 var(--ink);transition:transform .12s, box-shadow .12s;
+  }
+  .name-input::placeholder{color:rgba(23,17,11,0.4);}
+  .name-input:focus{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink);}
+
+  .go-btn{
+    font-family:'Baloo 2',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.01em;
+    padding:13px 22px;border-radius:10px;border:3px solid var(--ink);cursor:pointer;color:var(--ink);
+    background:var(--gold);box-shadow:4px 4px 0 var(--ink);transition:transform .12s, box-shadow .12s;
+  }
+  .go-btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);}
+  .go-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+
+  .footer-credit{
+    margin-top:28px;font-family:'Caveat',cursive;font-weight:600;font-size:16px;
+    color:rgba(23,17,11,0.55);
+  }
+
+  /* ---------------- permission card ---------------- */
+  #overlay{
+    position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+    background-size:26px 26px;
+    padding:24px;text-align:center;
+    opacity:1;transition:opacity .5s ease, transform .5s ease;
+  }
+  #overlay.hidden{opacity:0;transform:scale(0.98);pointer-events:none;}
+  .card{
+    max-width:420px;background:var(--white);border:3px solid var(--ink);border-radius:14px;
+    padding:30px 28px;box-shadow:6px 6px 0 var(--ink);
+  }
+  .card h1{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:25px;margin:0 0 10px;color:var(--ink);}
+  .card p{font-size:14px;line-height:1.65;color:rgba(23,17,11,0.78);margin:0 0 20px;}
+  .fineprint{margin-top:16px;font-size:11.5px;color:rgba(23,17,11,0.5);}
+  .err{color:#b3123a;font-size:13px;margin-top:14px;display:none;}
+
+  /* ---------------- exit screen ---------------- */
+  #exitOverlay{
+    position:absolute;inset:0;z-index:25;display:none;align-items:center;justify-content:center;
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+    background-size:26px 26px;
+    padding:24px;text-align:center;
+    opacity:0;transition:opacity .4s ease;
+  }
+  #exitOverlay.show{display:flex;opacity:1;}
+  .exit-card{
+    max-width:380px;background:var(--white);border:3px solid var(--ink);border-radius:14px;
+    padding:30px 28px;box-shadow:6px 6px 0 var(--ink);
+  }
+  .exit-card h1{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:24px;margin:0 0 10px;color:var(--ink);}
+  .exit-card p{font-size:14px;line-height:1.6;color:rgba(23,17,11,0.75);margin:0 0 20px;}
+  .exit-card .footer-credit{margin-top:18px;}
+
+  /* ---------------- live stage ---------------- */
+  video{display:none;}
+  #scene{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+  .brand{
+    position:absolute;top:16px;left:18px;font-family:'Silkscreen',monospace;font-weight:700;font-size:12px;
+    color:var(--white);background:rgba(23,17,11,0.5);padding:5px 10px;border-radius:6px;
+    pointer-events:none;user-select:none;z-index:5;
+  }
+
+  .hud{position:absolute;top:16px;right:18px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;z-index:5;pointer-events:none;}
+  .pill{
+    display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;
+    background:var(--white);border:2px solid var(--ink);font-size:11px;font-weight:700;letter-spacing:0.02em;color:var(--ink);
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:#cfc3a6;flex:none;transition:background .15s;}
+  .dot.point{background:var(--fuchsia);}
+  .dot.fist{background:var(--gold);}
+  .dot.on{background:#3fae6a;}
+  .dot.blow{background:var(--rose);}
+  .meter{width:60px;height:5px;border-radius:3px;background:rgba(23,17,11,0.12);overflow:hidden;}
+  .meter i{display:block;height:100%;width:0%;background:var(--fuchsia);transition:width .06s linear;}
+
+  .hint{
+    position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);
+    background:var(--white);border:2.5px solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 var(--ink);
+    padding:14px 20px;font-family:'Baloo 2',sans-serif;font-size:clamp(13px,2.4vw,16px);color:var(--ink);
+    text-align:center;line-height:1.55;pointer-events:none;user-select:none;transition:opacity .5s ease;z-index:4;
+  }
+  .hint.hide{opacity:0;}
+  .hint b{color:var(--fuchsia);}
+
+  .controls{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:12px;z-index:5;}
+  .ctrl-btn{
+    display:flex;align-items:center;gap:8px;padding:11px 18px;border-radius:10px;
+    border:2.5px solid var(--ink);background:var(--white);color:var(--ink);
+    font-family:'Quicksand',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.02em;cursor:pointer;
+    box-shadow:3px 3px 0 var(--ink);transition:transform .12s, box-shadow .12s;
+  }
+  .ctrl-btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink);}
+  .ctrl-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+  .ctrl-btn svg{width:16px;height:16px;flex:none;}
+  .ctrl-btn.primary{background:var(--fuchsia);color:var(--white);}
+
+  .toast{
+    position:absolute;left:50%;bottom:86px;transform:translateX(-50%) translateY(8px);padding:8px 14px;border-radius:10px;
+    background:var(--white);border:2px solid var(--ink);font-size:12.5px;font-weight:700;color:var(--ink);
+    opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;white-space:nowrap;z-index:7;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:420px){
+    .ctrl-btn{padding:10px 14px;font-size:12px;}
+    .ctrl-btn span{display:none;}
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Quicksand:wght@500;600;700&family=Silkscreen:wght@400;700&family=Caveat:wght@600;700&display=swap">
+</head>
+<body>
+<div id="stage">
+
+  <!-- ===== landing / name gate ===== -->
+  <div id="landing">
+    <div class="landing-inner">
+
+      <div class="title-box">
+        <h1>FUFU</h1>
+      </div>
+
+      <div class="polaroid">
+        <div class="tape"></div>
+        <div class="avatar-wrap" id="avatarLanding">
+          <div class="hair-back"></div>
+          <div class="hair-top-spike"></div>
+          <div class="hair-top-spike-2"></div>
+          <div class="ear l"></div><div class="ear r"></div>
+          <div class="sideburn l"></div><div class="sideburn r"></div>
+          <div class="neck"></div>
+          <div class="head"></div>
+          <div class="hair-front"></div>
+          <div class="hair-fringe"></div>
+          <div class="hair-fringe r"></div>
+          <div class="eyebrow l"></div><div class="eyebrow r"></div>
+          <div class="glasses">
+            <div class="lens l"><span class="glint l"></span></div>
+            <div class="lens r"><span class="glint r"></span></div>
+            <div class="bridge"></div>
+          </div>
+          <div class="eye l"></div><div class="eye r"></div>
+          <div class="mouth"></div>
+          <div class="torso"></div>
+          <div class="collar"></div>
+          <div class="torso-star"></div>
+          <div class="arm l"></div><div class="arm r"></div>
+        </div>
+        <div class="caption">hi, it's me</div>
+      </div>
+
+      <div class="bubble" id="bubbleText"></div>
+      <form class="name-row" id="nameForm">
+        <input class="name-input" id="nameInput" type="text" placeholder="your name" maxlength="24" autocomplete="off">
+        <button type="submit" class="go-btn">fog me in →</button>
+      </form>
+      <div class="footer-credit">made &amp; designed by Vinayaka N Walishettar</div>
+    </div>
+  </div>
+
+  <!-- ===== permission card ===== -->
+  <div id="overlay">
+    <div class="card">
+      <h1 id="overlayTitle">hi there</h1>
+      <p>This needs your camera and microphone. Everything runs locally in your browser — nothing is recorded or sent anywhere. Blow toward the screen to fog it, point one finger to wipe it clear and write. Close your hand into a fist to lift the "pen" and move without drawing a line.</p>
+      <button class="go-btn" id="startBtn">Turn on camera &amp; mic</button>
+      <div class="err" id="errMsg"></div>
+    </div>
+  </div>
+
+  <!-- ===== exit screen ===== -->
+  <div id="exitOverlay">
+    <div class="exit-card">
+      <h1 id="exitTitle">thanks for stopping by</h1>
+      <p>Your camera and mic are off now — nothing was saved unless you hit Save. Come fog up the window again any time.</p>
+      <button class="go-btn" id="restartBtn">start again →</button>
+      <div class="footer-credit">made &amp; designed by Vinayaka N Walishettar</div>
+    </div>
+  </div>
+
+  <!-- ===== live fog canvas ===== -->
+  <video id="video" playsinline muted></video>
+  <canvas id="scene"></canvas>
+
+  <div class="brand">FUFU</div>
+
+  <div class="hud">
+    <div class="pill"><span class="dot" id="camDot"></span>camera</div>
+    <div class="pill"><span class="dot" id="handDot"></span><span id="handLabel">hand</span></div>
+    <div class="pill"><span class="dot" id="micDot"></span>mic <div class="meter"><i id="micMeter"></i></div></div>
+  </div>
+
+  <div class="hint" id="hint">blow at the screen to fog it<br><b>point</b> one finger to wipe &amp; write<br>make a <b>fist</b> to lift the pen and reposition</div>
+
+  <div class="controls">
+    <button class="ctrl-btn primary" id="breatheBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1.8 2.4-3 4.6-3 6.5a3 3 0 0 0 6 0C15 7.6 13.8 5.4 12 3Z"/><path d="M4.5 14.5c1.6-1 3.2-1 4.7 0M9.8 16.2c1.6-1 3.2-1 4.7 0M14.9 14.5c1.6-1 3.2-1 4.7 0"/></svg>
+      <span>Breathe</span>
+    </button>
+    <button class="ctrl-btn" id="saveBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      <span>Save</span>
+    </button>
+    <button class="ctrl-btn" id="exitBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      <span>Exit</span>
+    </button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
+
+<script>
+(function(){
+  // ---------- landing: sparkle stickers + typewriter + name gate ----------
+  const landingInner = document.querySelector('.landing-inner');
+  const sparkleColors = ['var(--tulip)','var(--fuchsia)','var(--gold)'];
+  const sparkleSpots = [
+    {top:'6%', left:'6%'}, {top:'4%', right:'8%'}, {top:'46%', left:'2%'},
+    {top:'50%', right:'0%'}, {bottom:'8%', left:'10%'}, {bottom:'4%', right:'12%'}
+  ];
+  sparkleSpots.forEach((pos, i) => {
+    const s = document.createElement('div');
+    s.className = 'sparkle';
+    Object.assign(s.style, pos, {
+      width: (10 + (i%3)*4) + 'px', height: (10 + (i%3)*4) + 'px',
+      background: sparkleColors[i % sparkleColors.length]
+    });
+    landingInner.appendChild(s);
+  });
+
+  const bubbleText = document.getElementById('bubbleText');
+  const fullLine = "psst — new player. what do I call you?";
+  let ti = 0;
+  function typeNext(){
+    if(ti <= fullLine.length){
+      bubbleText.innerHTML = fullLine.slice(0, ti) + '<span class="cursor">&nbsp;</span>';
+      ti++;
+      setTimeout(typeNext, 26);
+    } else {
+      bubbleText.innerHTML = fullLine;
+    }
+  }
+  typeNext();
+
+  const avatarLanding = document.getElementById('avatarLanding');
+  const nameInput = document.getElementById('nameInput');
+  nameInput.addEventListener('focus', () => avatarLanding.classList.add('excited'));
+  nameInput.addEventListener('blur', () => avatarLanding.classList.remove('excited'));
+
+  const landing = document.getElementById('landing');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+
+  let guestName = '';
+  document.getElementById('nameForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    guestName = (nameInput.value || '').trim();
+    overlayTitle.textContent = guestName ? `alright, ${guestName}` : 'alright, mystery guest';
+    landing.classList.add('hidden');
+    setTimeout(() => { landing.style.display = 'none'; }, 550);
+  });
+
+  // ---------- stage / canvas setup ----------
+  const stage = document.getElementById('stage');
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d', { alpha:false });
+  const hint = document.getElementById('hint');
+  const toastEl = document.getElementById('toast');
+  const startBtn = document.getElementById('startBtn');
+  const errMsg = document.getElementById('errMsg');
+  const camDot = document.getElementById('camDot');
+  const handDot = document.getElementById('handDot');
+  const handLabel = document.getElementById('handLabel');
+  const micDot = document.getElementById('micDot');
+  const micMeter = document.getElementById('micMeter');
+
+  const bg = document.createElement('canvas');
+  const bgCtx = bg.getContext('2d');
+  const blur = document.createElement('canvas');
+  const blurCtx = blur.getContext('2d');
+  const fog = document.createElement('canvas');
+  const fogCtx = fog.getContext('2d');
+  const tmp = document.createElement('canvas');
+  const tmpCtx = tmp.getContext('2d');
+
+  const RES_W = 640, RES_H = 480;
+  let W = RES_W, H = RES_H;
+  [canvas, bg, blur, fog, tmp].forEach(c => { c.width = W; c.height = H; });
+
+  const HEAL_PER_SEC = 0.085;   // frame-rate independent fog regrowth
+  const BRUSH_RADIUS = 19;      // medium-thin wipe/draw width
+  const TIP_SMOOTH = 0.45;      // higher = snappier, lower = smoother
+  const PALM_SMOOTH = 0.3;
+
+  function makeBrush(){
+    const s = 256;
+    const c = document.createElement('canvas');
+    c.width = c.height = s;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.55, 'rgba(255,255,255,0.85)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, s, s);
+    return c;
+  }
+  const brush = makeBrush();
+
+  function makeNoiseTile(){
+    const s = 128;
+    const c = document.createElement('canvas');
+    c.width = c.height = s;
+    const g = c.getContext('2d');
+    const id = g.createImageData(s, s);
+    for(let i = 0; i < id.data.length; i += 4){
+      id.data[i]=255; id.data[i+1]=255; id.data[i+2]=255;
+      id.data[i+3] = Math.random()*36;
+    }
+    g.putImageData(id, 0, 0);
+    return c;
+  }
+  const noiseTile = makeNoiseTile();
+  const noisePattern = blurCtx.createPattern(noiseTile, 'repeat');
+
+  fogCtx.fillStyle = 'rgba(255,255,255,1)';
+  fogCtx.fillRect(0, 0, W, H);
+
+  function drawVideoFrame(){
+    bgCtx.save();
+    bgCtx.translate(W, 0);
+    bgCtx.scale(-1, 1);
+    const vw = video.videoWidth || W, vh = video.videoHeight || H;
+    const scale = Math.max(W / vw, H / vh);
+    const dw = vw * scale, dh = vh * scale;
+    const dx = (W - dw) / 2, dy = (H - dh) / 2;
+    bgCtx.drawImage(video, dx, dy, dw, dh);
+    bgCtx.restore();
+  }
+
+  function buildBlur(){
+    blurCtx.clearRect(0, 0, W, H);
+    blurCtx.save();
+    blurCtx.filter = 'blur(14px)';
+    blurCtx.drawImage(bg, 0, 0);
+    blurCtx.restore();
+    blurCtx.fillStyle = 'rgba(255,217,224,0.32)'; // warm blush frost, matches palette
+    blurCtx.fillRect(0, 0, W, H);
+    blurCtx.fillStyle = noisePattern;
+    blurCtx.globalAlpha = 0.42;
+    blurCtx.fillRect(0, 0, W, H);
+    blurCtx.globalAlpha = 1;
+  }
+
+  function wipeAt(x, y, r){
+    fogCtx.globalCompositeOperation = 'destination-out';
+    fogCtx.drawImage(brush, x - r, y - r, r*2, r*2);
+  }
+  function fogAt(x, y, r, alpha){
+    fogCtx.globalCompositeOperation = 'source-over';
+    fogCtx.globalAlpha = alpha;
+    fogCtx.drawImage(brush, x - r, y - r, r*2, r*2);
+    fogCtx.globalAlpha = 1;
+  }
+  function heal(dt){
+    fogCtx.globalCompositeOperation = 'source-over';
+    fogCtx.fillStyle = `rgba(255,255,255,${HEAL_PER_SEC*dt})`;
+    fogCtx.fillRect(0, 0, W, H);
+  }
+  function render(){
+    tmpCtx.clearRect(0, 0, W, H);
+    tmpCtx.globalCompositeOperation = 'source-over';
+    tmpCtx.drawImage(fog, 0, 0);
+    tmpCtx.globalCompositeOperation = 'source-in';
+    tmpCtx.drawImage(blur, 0, 0);
+    tmpCtx.globalCompositeOperation = 'source-over';
+
+    ctx.drawImage(bg, 0, 0);
+    ctx.drawImage(tmp, 0, 0);
+
+    if(cursorMode === 'point'){
+      ctx.beginPath();
+      ctx.arc(smTipX, smTipY, 6, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(255,217,224,0.9)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else if(cursorMode === 'fist'){
+      ctx.save();
+      ctx.translate(smPalmX, smPalmY);
+      ctx.beginPath();
+      ctx.arc(0, 0, 12, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(232,185,74,0.9)';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-4,0); ctx.lineTo(4,0); ctx.moveTo(0,-4); ctx.lineTo(0,4);
+      ctx.strokeStyle = 'rgba(232,185,74,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function easeOutCubic(t){ return 1 - Math.pow(1-t, 3); }
+  function breathBurst(x, y, strength){
+    const start = performance.now();
+    const dur = 550 + strength*320;
+    const maxR = (90 + strength*220);
+    function step(t){
+      const p = Math.min(1, (t-start)/dur);
+      const r = 16 + maxR*easeOutCubic(p);
+      fogAt(x, y, r, 0.9*(1-p*0.3));
+      if(p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  let hinted = false;
+  function hideHint(){ if(hinted) return; hinted = true; hint.classList.add('hide'); }
+
+  let toastTimer = null;
+  function flash(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  // ---------- hand tracking ----------
+  // pointing (index only extended) draws; a closed fist lifts the pen so the
+  // next pointing stroke starts fresh instead of connecting across the gap.
+  let cursorMode = 'none'; // 'point' | 'fist' | 'none'
+  let smTipX = W/2, smTipY = H/2;
+  let smPalmX = W/2, smPalmY = H/2;
+  let lastDrawX = null, lastDrawY = null;
+
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+  function fingerExtended(tip, pip, wrist){
+    return dist(tip, wrist) > dist(pip, wrist) * 1.12;
+  }
+
+  function onHandsResults(results){
+    const lm = results.multiHandLandmarks && results.multiHandLandmarks[0];
+    if(!lm){
+      cursorMode = 'none';
+      lastDrawX = null; lastDrawY = null;
+      handDot.classList.remove('point','fist');
+      handLabel.textContent = 'hand';
+      return;
+    }
+
+    const wrist = lm[0];
+    const idxExt = fingerExtended(lm[8], lm[6], wrist);
+    const midExt = fingerExtended(lm[12], lm[10], wrist);
+    const ringExt = fingerExtended(lm[16], lm[14], wrist);
+    const pinkyExt = fingerExtended(lm[20], lm[18], wrist);
+
+    const pointing = idxExt && !midExt && !ringExt && !pinkyExt;
+    const fist = !idxExt && !midExt && !ringExt && !pinkyExt;
+
+    if(pointing){
+      cursorMode = 'point';
+      handDot.classList.add('point'); handDot.classList.remove('fist');
+      handLabel.textContent = 'drawing';
+
+      const tip = lm[8];
+      const tx = (1 - tip.x) * W;
+      const ty = tip.y * H;
+      smTipX += (tx - smTipX) * TIP_SMOOTH;
+      smTipY += (ty - smTipY) * TIP_SMOOTH;
+
+      if(lastDrawX === null){
+        // pen just came down — start a new stroke here, no line from the old spot
+        lastDrawX = smTipX; lastDrawY = smTipY;
+      } else {
+        const d = Math.hypot(smTipX - lastDrawX, smTipY - lastDrawY);
+        const steps = Math.max(1, Math.floor(d / 5));
+        for(let i = 1; i <= steps; i++){
+          const ix = lastDrawX + (smTipX - lastDrawX) * (i/steps);
+          const iy = lastDrawY + (smTipY - lastDrawY) * (i/steps);
+          wipeAt(ix, iy, BRUSH_RADIUS);
+        }
+        lastDrawX = smTipX; lastDrawY = smTipY;
+        hideHint();
+      }
+    } else if(fist){
+      cursorMode = 'fist';
+      handDot.classList.add('fist'); handDot.classList.remove('point');
+      handLabel.textContent = 'pen up';
+      lastDrawX = null; lastDrawY = null; // pen lift: breaks the stroke
+
+      const cx = (lm[0].x + lm[5].x + lm[9].x + lm[13].x + lm[17].x) / 5;
+      const cy = (lm[0].y + lm[5].y + lm[9].y + lm[13].y + lm[17].y) / 5;
+      const px = (1 - cx) * W;
+      const py = cy * H;
+      smPalmX += (px - smPalmX) * PALM_SMOOTH;
+      smPalmY += (py - smPalmY) * PALM_SMOOTH;
+      hideHint();
+    } else {
+      cursorMode = 'none';
+      handDot.classList.remove('point','fist');
+      handLabel.textContent = 'hand';
+      lastDrawX = null; lastDrawY = null;
+    }
+  }
+
+  let hands = null;
+
+  async function ensureMediaPipeLoaded(){
+    if(typeof Hands !== 'undefined' && typeof Camera !== 'undefined') return;
+
+    startBtn.textContent = 'Loading AI models…';
+
+    const loadScript = (src) => new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.crossOrigin = 'anonymous';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+
+    try {
+      if(typeof Camera === 'undefined'){
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js');
+      }
+      if(typeof Hands === 'undefined'){
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js');
+      }
+    } catch(e) {
+      if(typeof Camera === 'undefined'){
+        await loadScript('https://unpkg.com/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js');
+      }
+      if(typeof Hands === 'undefined'){
+        await loadScript('https://unpkg.com/@mediapipe/hands@0.4.1646424915/hands.js');
+      }
+    }
+
+    for(let i = 0; i < 40; i++){
+      if(typeof Hands !== 'undefined' && typeof Camera !== 'undefined') return;
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    if(typeof Hands === 'undefined' || typeof Camera === 'undefined'){
+      throw new Error('MediaPipe Hands library could not be loaded. Check your internet connection.');
+    }
+  }
+
+  function getHandsTracker(){
+    if(hands) return hands;
+    if(typeof Hands === 'undefined'){
+      throw new Error('MediaPipe Hands is still initializing. Please click again in a moment.');
+    }
+    hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`
+    });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.6
+    });
+    hands.onResults(onHandsResults);
+    return hands;
+  }
+
+  // ---------- mic / blow detection ----------
+  let audioCtx = null, analyser = null, timeData = null;
+  let noiseFloor = 0.02, blowing = false, blowSilence = 0;
+
+  function setupAudio(stream){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.65;
+    src.connect(analyser);
+    timeData = new Uint8Array(analyser.fftSize);
+    micDot.classList.add('on');
+  }
+
+  function pollAudio(){
+    if(!analyser) return;
+    analyser.getByteTimeDomainData(timeData);
+    let sum = 0;
+    for(let i = 0; i < timeData.length; i++){
+      const v = (timeData[i]-128)/128;
+      sum += v*v;
+    }
+    const rms = Math.sqrt(sum / timeData.length);
+    micMeter.style.width = Math.min(100, rms*420) + '%';
+
+    if(rms < noiseFloor*1.4){ noiseFloor = noiseFloor*0.97 + rms*0.03; }
+    const threshold = Math.max(0.045, noiseFloor*3.2);
+
+    if(rms > threshold){
+      blowSilence = 0;
+      if(!blowing){ blowing = true; micDot.classList.add('blow'); hideHint(); }
+      const strength = Math.min(1, (rms - threshold) / 0.12);
+      if(Math.random() < 0.5){
+        breathBurst(W*(0.3+Math.random()*0.4), H*(0.75+Math.random()*0.2), strength);
+      }
+    } else if(blowing){
+      blowSilence++;
+      if(blowSilence > 10){ blowing = false; micDot.classList.remove('blow'); }
+    }
+  }
+
+  // ---------- controls ----------
+  document.getElementById('breatheBtn').addEventListener('click', () => {
+    hideHint();
+    breathBurst(W/2, H*0.9, 1);
+    setTimeout(() => {
+      fogCtx.globalCompositeOperation = 'source-over';
+      fogCtx.fillStyle = 'rgba(255,255,255,1)';
+      fogCtx.fillRect(0, 0, W, H);
+    }, 260);
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      if(!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'fufu.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      flash('Saved');
+    }, 'image/png');
+  });
+
+  // ---------- exit / restart ----------
+  const exitOverlay = document.getElementById('exitOverlay');
+  const exitBtn = document.getElementById('exitBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  let mediaStream = null;
+  let running = false;
+
+  exitBtn.addEventListener('click', () => {
+    running = false;
+    if(mpCamera && mpCamera.stop) { try{ mpCamera.stop(); }catch(e){} }
+    if(mediaStream){ mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+    if(audioCtx){ try{ audioCtx.close(); }catch(e){} audioCtx = null; analyser = null; }
+    camDot.classList.remove('on');
+    micDot.classList.remove('on','blow');
+    exitOverlay.classList.add('show');
+  });
+
+  restartBtn.addEventListener('click', () => { location.reload(); });
+
+  // ---------- startup ----------
+  let mpCamera = null;
+  startBtn.addEventListener('click', async () => {
+    startBtn.disabled = true;
+    startBtn.textContent = 'Requesting access…';
+    errMsg.style.display = 'none';
+
+    if(!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'){
+      startBtn.disabled = false;
+      startBtn.textContent = 'Turn on camera & mic';
+      errMsg.style.display = 'block';
+      errMsg.innerHTML = '⚠️ <b>HTTPS Required:</b> Camera & microphone access only works over a secure connection. Please open this site using <b>https://</b> instead of http://';
+      return;
+    }
+
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      startBtn.disabled = false;
+      startBtn.textContent = 'Turn on camera & mic';
+      errMsg.style.display = 'block';
+      errMsg.innerHTML = '⚠️ <b>Unsupported or Insecure Context:</b> Your browser cannot access the camera/microphone. Please ensure you are visiting via HTTPS.';
+      return;
+    }
+
+    try{
+      await ensureMediaPipeLoaded();
+      startBtn.textContent = 'Requesting access…';
+      const handTracker = getHandsTracker();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: RES_W }, height: { ideal: RES_H } },
+        audio: true
+      });
+      mediaStream = stream;
+      video.srcObject = stream;
+      await video.play();
+      camDot.classList.add('on');
+
+      setupAudio(stream);
+
+      mpCamera = new Camera(video, {
+        onFrame: async () => { await handTracker.send({ image: video }); },
+        width: RES_W, height: RES_H
+      });
+      mpCamera.start();
+
+      overlay.classList.add('hidden');
+      setTimeout(() => { overlay.style.display = 'none'; }, 550);
+      running = true;
+      loop();
+    }catch(err){
+      startBtn.disabled = false;
+      startBtn.textContent = 'Turn on camera & mic';
+      errMsg.style.display = 'block';
+      if(err && err.name === 'NotAllowedError'){
+        errMsg.textContent = 'Camera/mic access was blocked. Allow it in your browser\'s site settings and try again.';
+      } else {
+        errMsg.textContent = 'Could not access camera or microphone: ' + (err && err.message ? err.message : err);
+      }
+    }
+  });
+
+  let lastT = performance.now();
+  function loop(now){
+    if(!running) return;
+    now = now || performance.now();
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+
+    drawVideoFrame();
+    buildBlur();
+    heal(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  setInterval(() => { if(analyser) pollAudio(); }, 16);
+})();
+</script>
+</body>
+</html>
